@@ -64,6 +64,7 @@ with open(outputFname, 'r') as outputFile:
         # split line on whitespace and punctuation
         word = re.split('[ \t]', line)
         if len(word) != 2:
+            print("Your fault")
             print ("Badly formatted line, exiting. Bad line:\n %s" % line)
             exit()
         if word[0] <= lastWord:

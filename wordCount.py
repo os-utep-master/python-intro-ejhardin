@@ -12,13 +12,16 @@ outputFname = sys.argv[2]
 with open(textFname, 'r') as inputs:
     for line in inputs:
         line = line.strip()
-        word = re.split('[ \t]', line)
+        word = re.split('[- \' ; \t "]', line)
         for singleWord in word:
-            if singleWord.endswith(',') or singleWord.endswith('.'):
+            singleWord = singleWord.lower()
+            if singleWord.endswith('.') or singleWord.endswith(':') or singleWord.endswith(','):
                 singleWord = singleWord[:-1]
             if singleWord not in wordMap:
-                wordMap[singleWord] = 0 
+                wordMap[singleWord] = 0
             wordMap[singleWord] += 1
+del wordMap[""]
+
 with open(outputFname, "w") as outs:
     for singleWord in sorted(wordMap.keys()):
         outs.write(singleWord+" "+str(wordMap[singleWord])+"\n")
