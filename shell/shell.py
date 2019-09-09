@@ -22,14 +22,19 @@ while True:
     commands = inputs.split('\\n ')
     
     for command in commands:
+        backGr = 0
         if not command:
             continue
         args = re.split(" ", command) #["wc", "p3-exec.py"]
 
         if args[0] == "":
             args=args[1:]
-        if args[-1] == "":
+        while args[-1] == "":
             args = args[:-1]
+        if args[-1] == "&":
+            backGr=1
+            args = args[:-1]
+            
         
 
         if args[0] == "exit":
@@ -73,9 +78,10 @@ while True:
             else:                           # parent (forked ok)
                 os.write(2, ("Parent: My pid=%d.  Child's pid=%d\n" % 
                              (pid, rc)).encode())
-                childPidCode = os.wait()
-                childExitCode = (int)(childPidCode[1]) >> 10
-                childPidCode = (childPidCode[0], childExitCode)
-                os.write(2, ("Parent: Child %d terminated with exit code %d\n" % 
-                         childPidCode).encode())
+                if not backGr:
+                    childPidCode = os.wait()
+                    childExitCode = (int)(childPidCode[1]) >> 10
+                    childPidCode = (childPidCode[0], childExitCode)
+                    os.write(2, ("Parent: Child %d terminated with exit code %d\n" % 
+                                 childPidCode).encode())
 	
