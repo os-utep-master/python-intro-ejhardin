@@ -22,8 +22,15 @@ while True:
     commands = inputs.split('\\n ')
     
     for command in commands:
+        if not command:
+            continue
         args = re.split(" ", command) #["wc", "p3-exec.py"]
-        print(args)
+
+        if args[0] == "":
+            args=args[1:]
+        if args[-1] == "":
+            args = args[:-1]
+        
 
         if args[0] == "exit":
             os.write(2, ("Exiting...\n").encode())
