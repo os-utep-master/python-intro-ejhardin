@@ -19,22 +19,25 @@ while True:
         inputs = input(prompt)
     except EOFError:
         sys.exit(0)
-    commands = inputs.split('\\n ')
+    commands = re.split('\\n ',inputs) #inputs.split('\\n ')
     
     for command in commands:
-        backGr = 0
+        gazinta = command.find(">")
+        print(gazinta)
+        oldOut = -1
+        if gazinta > 0:
+            outputFile = command[gazinta+1:].strip()
+            command = command[:gazinta].strip()
+            oldOut = os.dup(1)
+#        print(command)
         if not command:
             continue
         args = re.split(" ", command) #["wc", "p3-exec.py"]
 
         if args[0] == "":
             args=args[1:]
-        while args[-1] == "":
+        if args[-1] == "":
             args = args[:-1]
-        if args[-1] == "&":
-            backGr=1
-            args = args[:-1]
-            
         
 
         if args[0] == "exit":
@@ -58,17 +61,30 @@ while True:
             elif rc == 0:                   # child
                 os.write(2, ("Child: My pid==%d.  Parent's pid=%d\n" % (os.getpid(), pid)).encode())
 
+                if gazinta > 0:
+                    oldOut = os.dup(1)
+                    os.close(1)
+                    sys.stdout=open(outputFile, 'w')
+                    os.set_inheritable(1,True)
+                    
                 if args[0].startswith("./") or args[0].startswith("/"):
                     try:
                         os.execve(args[0], args, os.environ) # try to exec program
+                        os.close(1)
+                        os.dup(oldOut)
+                        os.close(oldOut)
                     except FileNotFoundError:             # ...expected
                         pass                              # ...fail quietly
                 else:
                     for dir in re.split(":", os.environ['PATH']): # try each directory in the path
                         program = "%s/%s" % (dir, args[0])
-                        #os.write(2, ("Child:  ...trying to exec %s\n" % program).encode())
+                        os.write(2, ("Child:  ...trying to exec %s\n" % program).encode())
                         try:
                             os.execve(program, args, os.environ) # try to exec program
+                            os.close(1)
+                            os.dup(oldOut)
+                            os.close(oldOut)
+                            
                         except FileNotFoundError:             # ...expected
                             pass                              # ...fail quietly
 
@@ -78,10 +94,8 @@ while True:
             else:                           # parent (forked ok)
                 os.write(2, ("Parent: My pid=%d.  Child's pid=%d\n" % 
                              (pid, rc)).encode())
-                if not backGr:
-                    childPidCode = os.wait()
-                    childExitCode = (int)(childPidCode[1]) >> 10
-                    childPidCode = (childPidCode[0], childExitCode)
-                    os.write(2, ("Parent: Child %d terminated with exit code %d\n" % 
-                                 childPidCode).encode())
-	
+                childPidCode = os.wait()
+                childExitCode = (int)(childPidCode[1]) >> 10
+                childPidCode = (childPidCode[0], childExitCode)
+                os.write(2, ("Parent: Child %d terminated with exit code %d\n" % 
+                         childPidCode).encode())
