@@ -14,17 +14,48 @@ try:
 except:
     prompt = "$ "
 
+pipeArr = {}
 while True:
     try:
         inputs = input(prompt)
     except EOFError:
         sys.exit(0)
-    commands = re.split('\\n ',inputs) #inputs.split('\\n ')
     
+    
+    commands = re.split('\\n ',inputs) #inputs.split('\\n ')
+    c = {}
+    pipeArr = {}
+    
+    try:
+        pipedCommands = dict(command.split("|") for command in commands)
+        i = 0
+        for piped in pipedCommands:
+            if piped[-1] == "&":
+                piped = piped[:-1]
+            t = piped.strip()
+            c[t] = pipedCommands[piped].strip()
+            pipeArr[t] = -1
+            pipeArr[c[t]] = i
+            i = i +1
+        pipedCommands = c
+        print(pipedCommands)
+        print(pipeArr)
+    except:
+        pass
+
+    commands = re.split('\\n |\|',inputs) #inputs.split('\\n ')
+    sleeped = 0
     for command in commands:
+        if "&" in command:
+            sleeped = 1
+            command = command[:-1]
+            
+        command = command.strip()
         gazinta = command.find(">")
-        print(gazinta)
         oldOut = -1
+
+
+            
         if gazinta > 0:
             outputFile = command[gazinta+1:].strip()
             command = command[:gazinta].strip()
@@ -60,7 +91,28 @@ while True:
 
             elif rc == 0:                   # child
                 os.write(2, ("Child: My pid==%d.  Parent's pid=%d\n" % (os.getpid(), pid)).encode())
+                try:
+                    if pipeArr[command] == -1:
+                        oldOut = os.dup(1)
+                        os.close(1)
+                        sys.stdout = open("/tmp/tmpr1", 'w')
+                        os.set_inheritable(1,True)
+#                        os.dup(pw)
+#                        os.set_inheritable(1,True)
+                        
 
+                    elif pipeArr[command] > -1:
+                        oldIn = os.dup(0)
+                        os.close(0)
+                        ffile = os.open("/tmp/tmpr1" , 'r')
+#                        os.dup(pr)
+                        os.set_inheritable(ffile,True)
+
+                        rss = os.fdopen(ffile, 'r')
+                        args = rss
+                        print(rss)
+                except:
+                    pass
                 if gazinta > 0:
                     oldOut = os.dup(1)
                     os.close(1)
@@ -73,6 +125,9 @@ while True:
                         os.close(1)
                         os.dup(oldOut)
                         os.close(oldOut)
+                        for f in (pw, pr):
+                            os.close(f)
+                            
                     except FileNotFoundError:             # ...expected
                         pass                              # ...fail quietly
                 else:
@@ -84,6 +139,8 @@ while True:
                             os.close(1)
                             os.dup(oldOut)
                             os.close(oldOut)
+                            for f in (pw, pr):
+                                os.close(f)
                             
                         except FileNotFoundError:             # ...expected
                             pass                              # ...fail quietly
@@ -94,8 +151,9 @@ while True:
             else:                           # parent (forked ok)
                 os.write(2, ("Parent: My pid=%d.  Child's pid=%d\n" % 
                              (pid, rc)).encode())
-                childPidCode = os.wait()
-                childExitCode = (int)(childPidCode[1]) >> 10
-                childPidCode = (childPidCode[0], childExitCode)
-                os.write(2, ("Parent: Child %d terminated with exit code %d\n" % 
-                         childPidCode).encode())
+                if not sleeped:
+                    childPidCode = os.wait()
+                    childExitCode = (int)(childPidCode[1]) >> 10
+                    childPidCode = (childPidCode[0], childExitCode)
+                    os.write(2, ("Parent: Child %d terminated with exit code %d\n" % 
+                                 childPidCode).encode())
